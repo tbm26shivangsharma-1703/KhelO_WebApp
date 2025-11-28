@@ -1,0 +1,7 @@
+{
+  "name": "KhelO - Sports Booking",
+  "description": "A modern sports facility booking platform for India connecting enthusiasts with premium venues.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
