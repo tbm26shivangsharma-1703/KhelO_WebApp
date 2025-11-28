@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Calendar, CreditCard, Search, UserCheck } from 'lucide-react';
+import { ArrowRight, Calendar, CreditCard, Search, Zap } from 'lucide-react';
 import { SPORTS } from '../constants';
 
 export const Landing: React.FC = () => {
@@ -22,7 +23,7 @@ export const Landing: React.FC = () => {
           </h1>
           <p className="mt-6 text-xl text-gray-300 max-w-3xl">
             Connect with premium sports facilities across India's major cities. 
-            Simple booking, transparent pricing, and exclusive discounts for students.
+            Simple booking, transparent pricing, and instant confirmation.
           </p>
           <div className="mt-10 max-w-sm sm:flex sm:max-w-none gap-4">
             <Link
@@ -37,15 +38,6 @@ export const Landing: React.FC = () => {
             >
               Get Started
             </Link>
-          </div>
-          
-          {/* Student Badge */}
-          <div className="mt-8 inline-flex items-center px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20">
-            <span className="flex h-3 w-3 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-accent"></span>
-            </span>
-            <span className="ml-3 text-white font-medium">Students get flat 20% OFF</span>
           </div>
         </div>
       </div>
@@ -73,7 +65,7 @@ export const Landing: React.FC = () => {
             {[
               { icon: Search, title: "Find Venue", desc: "Search by city, sport, and date" },
               { icon: Calendar, title: "Pick Slots", desc: "Select multiple time slots easily" },
-              { icon: UserCheck, title: "Verify & Save", desc: "Students get 20% discount instantly" },
+              { icon: Zap, title: "Instant Booking", desc: "Book your slot instantly" },
               { icon: CreditCard, title: "Book Securely", desc: "Pay via UPI or Card in seconds" }
             ].map((step, idx) => (
               <div key={idx} className="flex flex-col items-center text-center">
@@ -100,7 +92,7 @@ export const Landing: React.FC = () => {
                 KhelO connects sports enthusiasts with premium facilities across major metros to offer seamless, affordable access to cricket grounds, football turfs, badminton courts, and more.
               </p>
               <p className="text-lg text-gray-600 mb-8">
-                We make booking sports venues simple, transparent, and affordable - especially for students who deserve accessible fitness options.
+                We make booking sports venues simple, transparent, and accessible. Book multiple slots, pay securely, and focus on what matters - your game.
               </p>
               <Link to="/venues" className="inline-flex items-center text-primary font-bold hover:text-emerald-700">
                 Explore Venues <ArrowRight className="ml-2" size={20} />

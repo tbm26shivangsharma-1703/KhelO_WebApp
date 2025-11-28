@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, User as UserIcon, LogOut, LayoutDashboard } from 'lucide-react';
@@ -39,13 +40,6 @@ export const Navbar: React.FC = () => {
           <div className="hidden sm:ml-6 sm:flex sm:items-center">
             {user ? (
               <div className="relative flex items-center gap-4">
-                 {user.type === 'student' && user.verificationStatus === 'verified' && (
-                    <span className="bg-green-100 text-green-800 text-xs font-semibold px-2.5 py-0.5 rounded border border-green-400">Student Verified</span>
-                 )}
-                 {user.type === 'student' && user.verificationStatus === 'pending' && (
-                    <span className="bg-yellow-100 text-yellow-800 text-xs font-semibold px-2.5 py-0.5 rounded border border-yellow-400">Verification Pending</span>
-                 )}
-
                 <Link to="/dashboard" className="flex items-center gap-2 text-gray-700 hover:text-primary transition-colors">
                     {user.avatarUrl ? (
                         <img src={user.avatarUrl} alt="Avatar" className="w-8 h-8 rounded-full border border-gray-200" />

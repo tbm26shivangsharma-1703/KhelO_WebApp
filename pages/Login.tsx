@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
@@ -26,15 +25,22 @@ export const Login: React.FC = () => {
        setError(null);
        try {
          const { error } = await supabase.auth.signInWithPassword({
-            email,
-            password
+            email: email.trim(),
+            password: password.trim()
          });
          
          if (error) throw error;
          // Navigation handled by useEffect
+         navigate('/dashboard');
        } catch (err: any) {
          console.error("Login failed:", err);
-         setError(err.message || "Failed to login. Please check your credentials.");
+         if (err.message.includes("Invalid login credentials")) {
+           setError("Invalid email or password. Please check your credentials.");
+         } else if (err.message.includes("Email not confirmed")) {
+           setError("Please verify your email address before logging in.");
+         } else {
+           setError(err.message || "Failed to login. Please try again.");
+         }
        } finally {
          setLoading(false);
        }
@@ -65,7 +71,12 @@ export const Login: React.FC = () => {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
+              <div className="flex justify-between items-center mb-1">
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
+                <Link to="/forgot-password" className="text-sm font-medium text-primary hover:text-emerald-500">
+                  Forgot your password?
+                </Link>
+              </div>
               <div className="mt-1">
                 <input id="password" name="password" type="password" required value={password} onChange={e => setPassword(e.target.value)} className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 bg-white text-gray-900 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm" />
               </div>

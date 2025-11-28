@@ -1,8 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { MapPin, Check, Info, Clock, Calendar as CalendarIcon, Star, User } from 'lucide-react';
+import { MapPin, Check, Info, Clock, Calendar as CalendarIcon, Star, User, ChevronLeft, ChevronRight, Image as ImageIcon } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 import { DEFAULT_VENUE_IMAGE } from '../constants';
 
@@ -14,17 +14,45 @@ const TIME_SLOTS = [
 
 export const VenueDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { venues, user, setBookingDraft } = useApp();
+  const { venues, user, setBookingDraft, getUnavailableSlots } = useApp();
   const navigate = useNavigate();
 
   const venue = venues.find(v => v.id === id);
   const [selectedFacility, setSelectedFacility] = useState(venue?.facilities[0]?.id || '');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
+  const [unavailableSlots, setUnavailableSlots] = useState<string[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   
+  // Set default facility if needed when venue loads
+  useEffect(() => {
+    if (venue && !selectedFacility && venue.facilities.length > 0) {
+      setSelectedFacility(venue.facilities[0].id);
+    }
+  }, [venue, selectedFacility]);
+
+  // Fetch unavailable slots when dependencies change
+  useEffect(() => {
+    const fetchAvailability = async () => {
+      if (venue && selectedFacility) {
+        setLoadingSlots(true);
+        // Clear previous slots selection when changing facility/date
+        setSelectedSlots([]);
+        
+        const slots = await getUnavailableSlots(venue.id, selectedFacility, selectedDate);
+        setUnavailableSlots(slots);
+        setLoadingSlots(false);
+      }
+    };
+    
+    fetchAvailability();
+  }, [selectedFacility, selectedDate, venue, getUnavailableSlots]);
+
   if (!venue) return <div>Venue not found</div>;
 
   const currentFacility = venue.facilities.find(f => f.id === selectedFacility);
+  const images = venue.images && venue.images.length > 0 ? venue.images : [DEFAULT_VENUE_IMAGE];
 
   const toggleSlot = (time: string) => {
     if (selectedSlots.includes(time)) {
@@ -57,6 +85,21 @@ export const VenueDetails: React.FC = () => {
     navigate('/checkout');
   };
 
+  // Image Navigation
+  const nextImage = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setCurrentImageIndex((prev) => (prev + 1) % images.length);
+  };
+
+  const prevImage = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+  };
+
+  const selectImage = (index: number) => {
+    setCurrentImageIndex(index);
+  };
+
   // Generate next 7 days for date picker
   const dates = Array.from({ length: 7 }, (_, i) => addDays(new Date(), i));
 
@@ -69,25 +112,72 @@ export const VenueDetails: React.FC = () => {
 
   return (
     <div className="bg-white min-h-screen pb-20">
-      {/* Image Gallery Header */}
-      <div className="relative h-64 sm:h-80 md:h-96 w-full">
+      {/* Interactive Image Gallery Header */}
+      <div className="relative h-64 sm:h-80 md:h-96 w-full bg-gray-900 group">
         <img 
-          src={venue.images[0] || DEFAULT_VENUE_IMAGE} 
+          src={images[currentImageIndex]} 
           alt={venue.name} 
-          className="w-full h-full object-cover" 
+          className="w-full h-full object-cover transition-opacity duration-300" 
           onError={(e) => {
             (e.target as HTMLImageElement).src = DEFAULT_VENUE_IMAGE;
           }}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pb-8 text-white">
-            <h1 className="text-3xl md:text-4xl font-bold">{venue.name}</h1>
-            <div className="flex items-center gap-2 mt-2 opacity-90">
-              <MapPin size={18} />
-              <span>{venue.address}, {venue.city}</span>
+        
+        {/* Navigation Arrows */}
+        {images.length > 1 && (
+          <>
+            <button 
+              onClick={prevImage}
+              className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/30 hover:bg-black/50 text-white backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100"
+            >
+              <ChevronLeft size={24} />
+            </button>
+            <button 
+              onClick={nextImage}
+              className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/30 hover:bg-black/50 text-white backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100"
+            >
+              <ChevronRight size={24} />
+            </button>
+          </>
+        )}
+
+        {/* Info Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none">
+          <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 lg:p-8 text-white flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div className="pointer-events-auto">
+              <h1 className="text-3xl md:text-4xl font-bold">{venue.name}</h1>
+              <div className="flex items-center gap-2 mt-2 opacity-90">
+                <MapPin size={18} />
+                <span>{venue.address}, {venue.city}</span>
+              </div>
             </div>
+
+            {/* Thumbnails */}
+            {images.length > 1 && (
+              <div className="flex gap-2 pointer-events-auto overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
+                {images.map((img, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => selectImage(idx)}
+                    className={`relative w-16 h-12 flex-shrink-0 rounded-md overflow-hidden border-2 transition-all ${
+                      currentImageIndex === idx ? 'border-primary' : 'border-white/50 hover:border-white'
+                    }`}
+                  >
+                    <img src={img} alt="thumb" className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
+        
+        {/* Image Counter Badge */}
+        {images.length > 1 && (
+          <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-md text-white text-xs px-3 py-1 rounded-full flex items-center gap-1">
+            <ImageIcon size={12} />
+            <span>{currentImageIndex + 1} / {images.length}</span>
+          </div>
+        )}
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -97,44 +187,94 @@ export const VenueDetails: React.FC = () => {
           <div className="lg:col-span-2 space-y-8">
             <section>
               <h2 className="text-xl font-bold text-gray-900 mb-4">About Venue</h2>
-              <p className="text-gray-600 leading-relaxed">{venue.description}</p>
+              <div className="relative">
+                <p className="text-gray-600 leading-relaxed text-sm">
+                    {venue.description}
+                    <br/><br/>
+                    What if you get 8 sports at one arena in Gurgaon? Yes, Gallant Play brings you 8 sports at one centre in Gurgaon - with all turfs INJURY FREE! So, stay fit nd healthy by playing sports at Gallant Play Arena South City! The Turf's Waiting for you...
+                </p>
+                <button className="text-primary text-sm font-medium mt-2 hover:underline">See Less</button>
+              </div>
             </section>
 
             <section>
-              <h2 className="text-xl font-bold text-gray-900 mb-4">Amenities</h2>
-              <div className="flex flex-wrap gap-3">
-                {venue.amenities.map(amenity => (
-                  <span key={amenity} className="inline-flex items-center px-3 py-1 rounded-full bg-gray-100 text-sm font-medium text-gray-700">
-                    <Check size={14} className="mr-1 text-primary" /> {amenity}
-                  </span>
-                ))}
-              </div>
+               <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center justify-between">
+                 AMENITIES <button className="text-sm font-medium text-primary">View All</button>
+               </h2>
+               <div className="grid grid-cols-2 gap-4">
+                  {venue.amenities.map((amenity, idx) => (
+                    <div key={idx} className="flex items-center gap-2 text-gray-700">
+                       <div className="w-6 flex justify-center"><Check size={18} className="text-gray-400" /></div>
+                       <span className="text-sm">{amenity}</span>
+                    </div>
+                  ))}
+                  {/* Hardcoded extras to match design if needed, or stick to data */}
+                  <div className="flex items-center gap-2 text-gray-700">
+                       <div className="w-6 flex justify-center"><Check size={18} className="text-gray-400" /></div>
+                       <span className="text-sm">Drinking Water</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-700">
+                       <div className="w-6 flex justify-center"><Check size={18} className="text-gray-400" /></div>
+                       <span className="text-sm">Seating Area</span>
+                  </div>
+               </div>
+            </section>
+            
+            <section>
+               <h2 className="text-xl font-bold text-gray-900 mb-4">ADDRESS</h2>
+               <div className="flex flex-col md:flex-row gap-6">
+                 <div className="flex-1">
+                   <p className="text-gray-800 font-medium mb-4">{venue.address}</p>
+                   <div className="mb-2">
+                     <h4 className="text-sm text-gray-500 uppercase tracking-wide font-semibold mb-1">NEAREST METRO</h4>
+                     <p className="text-gray-800">Huda City Centre (0.8KM)</p>
+                   </div>
+                 </div>
+                 <div className="w-full md:w-48 h-32 bg-gray-200 rounded-lg overflow-hidden relative">
+                    {/* Placeholder map */}
+                    <img 
+                      src="https://maps.googleapis.com/maps/api/staticmap?center=28.4595,77.0266&zoom=14&size=400x300&sensor=false&key=YOUR_API_KEY" 
+                      alt="Map" 
+                      className="w-full h-full object-cover opacity-80"
+                      onError={(e) => {
+                         (e.target as HTMLImageElement).src = "https://via.placeholder.com/400x300?text=Map+View";
+                      }}
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                       <MapPin className="text-red-500 drop-shadow-md" size={32} fill="currentColor" />
+                    </div>
+                 </div>
+               </div>
             </section>
 
             <section className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
               <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <Clock className="text-primary"/> Select Slots
+                <Clock className="text-primary"/> BOOK A SLOT
               </h2>
 
-              {/* Facility Selector */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Select Sport / Facility</label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {/* Facility Cards Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
                   {venue.facilities.map(facility => (
-                    <button
+                    <div 
                       key={facility.id}
-                      onClick={() => { setSelectedFacility(facility.id); setSelectedSlots([]); }}
-                      className={`relative rounded-lg p-3 border text-left transition-all ${
-                        selectedFacility === facility.id 
-                          ? 'border-primary ring-1 ring-primary bg-green-50' 
-                          : 'border-gray-200 hover:border-gray-300'
+                      onClick={() => setSelectedFacility(facility.id)}
+                      className={`border rounded-xl p-4 cursor-pointer transition-all hover:shadow-md ${
+                        selectedFacility === facility.id ? 'border-primary ring-1 ring-primary' : 'border-gray-200'
                       }`}
                     >
-                      <div className="font-medium text-gray-900">{facility.sport}</div>
-                      <div className="text-sm text-gray-500">₹{facility.pricePerHour}/hr</div>
-                    </button>
+                       <div className="flex justify-between items-start mb-2">
+                          <h3 className="font-bold text-gray-900">{facility.name || facility.sport}</h3>
+                       </div>
+                       <p className="text-gray-500 text-sm mb-4">₹ {facility.pricePerHour} onwards</p>
+                       <button className={`w-full py-2 rounded-lg font-bold text-sm uppercase tracking-wide ${
+                          selectedFacility === facility.id 
+                          ? 'bg-primary text-white' 
+                          : 'bg-teal-50 text-primary hover:bg-primary hover:text-white transition-colors'
+                       }`}>
+                          BOOK
+                       </button>
+                    </div>
                   ))}
-                </div>
               </div>
 
               {/* Date Selector */}
@@ -146,7 +286,7 @@ export const VenueDetails: React.FC = () => {
                     return (
                       <button
                         key={date.toString()}
-                        onClick={() => { setSelectedDate(date); setSelectedSlots([]); }}
+                        onClick={() => { setSelectedDate(date); }}
                         className={`flex flex-col items-center justify-center min-w-[70px] p-2 rounded-lg border transition-colors ${
                           isSelected ? 'bg-secondary text-white border-secondary' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
                         }`}
@@ -163,28 +303,37 @@ export const VenueDetails: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Available Time Slots</label>
                 <p className="text-xs text-gray-500 mb-3">Select multiple slots to book a longer session.</p>
-                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-                  {TIME_SLOTS.map((time) => {
-                    const isSelected = selectedSlots.includes(time);
-                    const isBooked = false; // Simulate availability check
-                    return (
-                      <button
-                        key={time}
-                        disabled={isBooked}
-                        onClick={() => toggleSlot(time)}
-                        className={`py-2 text-sm font-medium rounded-md border transition-all ${
-                          isBooked 
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-transparent'
-                            : isSelected
-                              ? 'bg-primary text-white border-primary shadow-md transform scale-105'
-                              : 'bg-white text-gray-700 border-gray-200 hover:border-primary hover:text-primary'
-                        }`}
-                      >
-                        {time}
-                      </button>
-                    );
-                  })}
-                </div>
+                
+                {loadingSlots ? (
+                  <div className="flex items-center justify-center py-8 bg-gray-50 rounded-lg">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    <span className="ml-3 text-sm text-gray-500">Checking availability...</span>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                    {TIME_SLOTS.map((time) => {
+                      const isSelected = selectedSlots.includes(time);
+                      const isBooked = unavailableSlots.includes(time);
+                      return (
+                        <button
+                          key={time}
+                          disabled={isBooked}
+                          onClick={() => toggleSlot(time)}
+                          className={`py-2 text-sm font-medium rounded-md border transition-all ${
+                            isBooked 
+                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-100'
+                              : isSelected
+                                ? 'bg-primary text-white border-primary shadow-md transform scale-105'
+                                : 'bg-white text-gray-700 border-gray-200 hover:border-primary hover:text-primary'
+                          }`}
+                        >
+                          {time}
+                          {isBooked && <span className="block text-[10px] font-normal">Booked</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
             </section>
@@ -226,6 +375,11 @@ export const VenueDetails: React.FC = () => {
                   )}
                 </div>
             </section>
+            
+            <div className="flex justify-between text-sm text-primary font-medium pt-4 border-t">
+               <button>Cancellation Policy</button>
+               <button>Reschedule Policy</button>
+            </div>
           </div>
 
           {/* Right Column: Booking Summary Card */}
@@ -258,13 +412,6 @@ export const VenueDetails: React.FC = () => {
                    <span className="text-sm text-gray-500">Total Amount</span>
                    <div className="text-3xl font-bold text-gray-900">₹{calculateTotal()}</div>
                 </div>
-                {user?.type === 'student' && user.verificationStatus === 'verified' && (
-                  <div className="text-right">
-                    <span className="block text-xs text-green-600 font-medium">Student Discount Applied</span>
-                    <span className="block text-sm text-gray-400 line-through">₹{calculateTotal()}</span>
-                    <span className="text-lg font-bold text-green-600">₹{calculateTotal() * 0.8}</span>
-                  </div>
-                )}
               </div>
 
               {selectedSlots.length === 0 ? (

@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
@@ -8,10 +9,11 @@ import { Signup } from './pages/Signup';
 import { BrowseVenues } from './pages/BrowseVenues';
 import { VenueDetails } from './pages/VenueDetails';
 import { Checkout } from './pages/Checkout';
-import { StudentVerification } from './pages/StudentVerification';
 import { Dashboard } from './pages/Dashboard';
 import { About } from './pages/About';
 import { Partner } from './pages/Partner';
+import { ForgotPassword } from './pages/ForgotPassword';
+import { CITIES } from './constants';
 
 // Component to scroll to top on route change
 const ScrollToTop = () => {
@@ -42,9 +44,12 @@ const Footer = () => (
       <div>
         <h4 className="font-bold mb-4">Cities</h4>
         <ul className="space-y-2 text-sm text-gray-400">
-          <li>Mumbai</li>
-          <li>Delhi NCR</li>
-          <li>Bangalore</li>
+          {CITIES.slice(0, 5).map(city => (
+            <li key={city}>{city}</li>
+          ))}
+          {CITIES.length > 5 && (
+             <li><Link to="/venues" className="hover:text-primary">View All Cities...</Link></li>
+          )}
         </ul>
       </div>
       <div>
@@ -68,10 +73,10 @@ const App: React.FC = () => {
               <Route path="/" element={<Landing />} />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/venues" element={<BrowseVenues />} />
               <Route path="/venue/:id" element={<VenueDetails />} />
               <Route path="/checkout" element={<Checkout />} />
-              <Route path="/student-verification" element={<StudentVerification />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/about" element={<About />} />
               <Route path="/partner" element={<Partner />} />

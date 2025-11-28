@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { Booking } from '../types';
-import { CreditCard, Smartphone, Check, Shield } from 'lucide-react';
+import { CreditCard, Smartphone, Shield } from 'lucide-react';
 import { format } from 'date-fns';
 import { DEFAULT_VENUE_IMAGE } from '../constants';
 
@@ -24,9 +24,8 @@ export const Checkout: React.FC = () => {
   const pricePerHour = facility.pricePerHour;
   const totalHours = slots.length;
   const subTotal = pricePerHour * totalHours;
-  const isEligibleForDiscount = user.type === 'student' && user.verificationStatus === 'verified';
-  const discountAmount = isEligibleForDiscount ? subTotal * 0.20 : 0;
-  const finalAmount = subTotal - discountAmount;
+  // Student discounts removed
+  const finalAmount = subTotal;
 
   const handlePayment = () => {
     setIsProcessing(true);
@@ -96,12 +95,7 @@ export const Checkout: React.FC = () => {
                    <span>Subtotal ({totalHours} hrs × ₹{pricePerHour})</span>
                    <span>₹{subTotal}</span>
                  </div>
-                 {isEligibleForDiscount && (
-                   <div className="flex justify-between text-green-600 bg-green-50 p-2 rounded">
-                     <span className="flex items-center gap-2"><Check size={14}/> Student Discount (20%)</span>
-                     <span>-₹{discountAmount}</span>
-                   </div>
-                 )}
+                 
                  <div className="flex justify-between font-bold text-xl pt-4 border-t">
                    <span>Total to Pay</span>
                    <span>₹{finalAmount}</span>

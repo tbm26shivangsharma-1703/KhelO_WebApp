@@ -3,16 +3,17 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-import { CheckCircle, Clock, XCircle, User as UserIcon, Calendar, MapPin, Star, MessageSquare, AlertCircle, AlertTriangle } from 'lucide-react';
+import { CheckCircle, Clock, User as UserIcon, Calendar, MapPin, Star, MessageSquare, AlertCircle, Settings, Lock } from 'lucide-react';
 import { Review } from '../types';
+import { DEFAULT_VENUE_IMAGE } from '../constants';
 
 type DashboardTab = 'bookings' | 'reviews' | 'profile';
 
 export const Dashboard: React.FC = () => {
-  const { user, bookings, venues, cancelBooking } = useApp();
+  const { user, bookings, venues, cancelBooking, updatePassword } = useApp();
   const location = useLocation();
   const navigate = useNavigate();
-  const state = location.state as { newBooking?: boolean, verificationSubmitted?: boolean } | null;
+  const state = location.state as { newBooking?: boolean } | null;
   const [activeTab, setActiveTab] = useState<DashboardTab>('bookings');
   
   // Cancellation Modal State
@@ -20,6 +21,10 @@ export const Dashboard: React.FC = () => {
   const [bookingToCancel, setBookingToCancel] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [refundCalculation, setRefundCalculation] = useState({ amount: 0, percentage: 0 });
+
+  // Password Change State
+  const [newPassword, setNewPassword] = useState('');
+  const [passwordStatus, setPasswordStatus] = useState<{type: 'success'|'error', msg: string} | null>(null);
 
   useEffect(() => {
      if(!user) navigate('/login');
@@ -70,6 +75,23 @@ export const Dashboard: React.FC = () => {
        await cancelBooking(bookingToCancel, cancelReason, refundCalculation.amount);
        setShowCancelModal(false);
        setBookingToCancel(null);
+    }
+  };
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordStatus(null);
+    if (newPassword.length < 6) {
+      setPasswordStatus({ type: 'error', msg: 'Password must be at least 6 characters' });
+      return;
+    }
+    
+    const res = await updatePassword(newPassword);
+    if (res.success) {
+      setPasswordStatus({ type: 'success', msg: 'Password updated successfully!' });
+      setNewPassword('');
+    } else {
+      setPasswordStatus({ type: 'error', msg: res.error || 'Failed to update password' });
     }
   };
 
@@ -126,7 +148,7 @@ export const Dashboard: React.FC = () => {
              <div className="flex gap-3">
                <button 
                  onClick={() => setShowCancelModal(false)}
-                 className="flex-1 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                 className="flex-1 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 bg-white"
                >
                  Go Back
                </button>
@@ -143,48 +165,6 @@ export const Dashboard: React.FC = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* Verification Alerts */}
-        {user.type === 'student' && user.verificationStatus === 'pending' && (
-          <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-8 rounded-r shadow-sm">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <Clock className="h-5 w-5 text-blue-400" />
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-blue-700">
-                  Your student verification is under review. We will notify you once approved (1-2 business days).
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {user.type === 'student' && user.verificationStatus === 'rejected' && (
-          <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-8 rounded-r shadow-sm">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex items-start">
-                <div className="flex-shrink-0">
-                  <XCircle className="h-5 w-5 text-red-500" />
-                </div>
-                <div className="ml-3">
-                  <h3 className="text-sm font-bold text-red-800">Verification Rejected</h3>
-                  <div className="mt-1 text-sm text-red-700">
-                    <p>Reason: <span className="font-medium italic">"{user.rejectionReason || 'Document issues'}"</span></p>
-                  </div>
-                </div>
-              </div>
-              <div className="sm:ml-auto">
-                 <Link 
-                   to="/student-verification"
-                   className="inline-flex items-center px-3 py-2 border border-red-200 text-sm leading-4 font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 shadow-sm"
-                 >
-                   Re-upload Documents
-                 </Link>
-              </div>
-            </div>
-          </div>
-        )}
-
         {state?.newBooking && (
            <div className="bg-green-50 border-l-4 border-green-400 p-4 mb-8 rounded-r shadow-sm animate-fade-in-down">
             <div className="flex">
@@ -211,34 +191,8 @@ export const Dashboard: React.FC = () => {
               <h2 className="text-xl font-bold text-gray-900">{user.name}</h2>
               <p className="text-sm text-gray-500 mb-2">{user.email}</p>
               <div className="inline-block px-3 py-1 rounded-full bg-gray-100 text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                {user.type} Account
+                User Account
               </div>
-
-              {user.type === 'student' && (
-                <div className="mt-6 pt-6 border-t border-gray-100">
-                  <div className="text-xs text-gray-500 mb-2">Verification Status</div>
-                  {user.verificationStatus === 'verified' ? (
-                    <span className="inline-flex items-center text-green-600 font-bold text-sm">
-                       <CheckCircle size={16} className="mr-1"/> Verified
-                    </span>
-                  ) : user.verificationStatus === 'pending' ? (
-                    <span className="inline-flex items-center text-yellow-600 font-bold text-sm">
-                       <Clock size={16} className="mr-1"/> Pending
-                    </span>
-                  ) : user.verificationStatus === 'rejected' ? (
-                    <div className="flex flex-col items-center">
-                      <span className="inline-flex items-center text-red-600 font-bold text-sm mb-2">
-                        <XCircle size={16} className="mr-1"/> Rejected
-                      </span>
-                      <Link to="/student-verification" className="text-xs text-primary hover:underline">
-                        Retry Verification
-                      </Link>
-                    </div>
-                  ) : (
-                    <Link to="/student-verification" className="text-primary hover:underline text-sm font-medium">Verify Now for 20% Off</Link>
-                  )}
-                </div>
-              )}
 
               {/* Sidebar Navigation */}
               <nav className="mt-8 space-y-2 text-left">
@@ -255,6 +209,13 @@ export const Dashboard: React.FC = () => {
                 >
                   <MessageSquare size={18} className="mr-3" />
                   My Reviews
+                </button>
+                <button 
+                  onClick={() => setActiveTab('profile')}
+                  className={`w-full flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'profile' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:bg-gray-50'}`}
+                >
+                  <Settings size={18} className="mr-3" />
+                  Profile & Settings
                 </button>
               </nav>
             </div>
@@ -287,8 +248,9 @@ export const Dashboard: React.FC = () => {
                             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
                                <div className="flex items-start gap-4">
                                   <img 
-                                    src={booking.facility?.image || 'https://via.placeholder.com/100'} 
+                                    src={booking.facility?.image || DEFAULT_VENUE_IMAGE} 
                                     alt="Facility" 
+                                    onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_VENUE_IMAGE; }}
                                     className="w-16 h-16 rounded-lg object-cover bg-gray-200"
                                   />
                                   <div>
@@ -306,7 +268,7 @@ export const Dashboard: React.FC = () => {
                                     </div>
                                     {booking.status === 'cancelled' && (
                                        <div className="text-xs text-red-500 mt-2 bg-red-50 p-1 rounded inline-block">
-                                         Cancelled: {booking.cancellationReason}
+                                         Cancelled: {booking.cancellationReason || 'User request'}
                                          {booking.refundAmount ? ` (Refund: ₹${booking.refundAmount})` : ''}
                                        </div>
                                     )}
@@ -315,13 +277,13 @@ export const Dashboard: React.FC = () => {
                                
                                <div className="text-right flex flex-col items-end">
                                   <div className="text-xl font-bold text-primary">₹{booking.totalAmount}</div>
-                                  <div className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium mt-1 ${
+                                  <div className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold mt-1 ${
                                      booking.status === 'confirmed' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                                   }`}>
                                      {booking.status.toUpperCase()}
                                   </div>
                                   <div className="text-xs text-gray-400 mt-2 mb-2">
-                                    ID: {booking.id}
+                                    ID: {booking.id.slice(0, 8)}...
                                   </div>
                                   
                                   {booking.status === 'confirmed' && isUpcoming(booking.date) && (
@@ -368,7 +330,7 @@ export const Dashboard: React.FC = () => {
                                      <span className="text-xs text-gray-500 ml-2">{item.review.date}</span>
                                   </div>
                                   <p className="text-gray-600 text-sm">{item.review.comment}</p>
-                               </div>
+                                </div>
                                <Link 
                                  to={`/venue/${item.venueId}`}
                                  className="text-sm font-medium text-primary hover:text-emerald-700 border border-primary/20 px-3 py-1 rounded-md hover:bg-primary/5 transition-colors"
@@ -381,6 +343,67 @@ export const Dashboard: React.FC = () => {
                      )}
                   </div>
                </div>
+             )}
+
+             {/* Profile Tab */}
+             {activeTab === 'profile' && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                   <div className="px-6 py-4 border-b border-gray-100">
+                      <h3 className="text-lg font-bold text-gray-900">Profile & Settings</h3>
+                   </div>
+                   
+                   <div className="p-6">
+                      <div className="mb-8">
+                        <h4 className="text-base font-semibold text-gray-800 mb-4">Personal Information</h4>
+                        <div className="grid md:grid-cols-2 gap-6">
+                           <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                              <div className="p-2 bg-gray-50 rounded border border-gray-200 text-gray-700">{user.name}</div>
+                           </div>
+                           <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                              <div className="p-2 bg-gray-50 rounded border border-gray-200 text-gray-700">{user.email}</div>
+                           </div>
+                           <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Account Type</label>
+                              <div className="p-2 bg-gray-50 rounded border border-gray-200 text-gray-700 capitalize">Standard User</div>
+                           </div>
+                        </div>
+                      </div>
+
+                      <div className="border-t border-gray-100 pt-8">
+                         <h4 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                           <Lock size={18} /> Security
+                         </h4>
+                         
+                         <form onSubmit={handlePasswordChange} className="max-w-md">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Change Password</label>
+                            <div className="flex gap-2 mb-2">
+                               <input 
+                                 type="password" 
+                                 placeholder="Enter new password"
+                                 value={newPassword}
+                                 onChange={(e) => setNewPassword(e.target.value)}
+                                 className="flex-1 border border-gray-300 rounded-md px-3 py-2 focus:ring-primary focus:border-primary"
+                               />
+                               <button 
+                                 type="submit"
+                                 className="bg-gray-800 text-white px-4 py-2 rounded-md hover:bg-gray-900 text-sm font-medium"
+                               >
+                                 Update
+                               </button>
+                            </div>
+                            <p className="text-xs text-gray-500 mb-2">Password must be at least 6 characters long.</p>
+                            
+                            {passwordStatus && (
+                              <div className={`text-sm p-2 rounded ${passwordStatus.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                                {passwordStatus.msg}
+                              </div>
+                            )}
+                         </form>
+                      </div>
+                   </div>
+                </div>
              )}
 
           </div>

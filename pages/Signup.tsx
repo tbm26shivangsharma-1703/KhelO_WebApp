@@ -10,19 +10,16 @@ export const Signup: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [userType, setUserType] = useState<'regular' | 'student'>('regular');
+  // User type is now always 'regular' by default as student features are removed
+  const userType = 'regular';
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [verificationSent, setVerificationSent] = useState(false);
 
-  // If user is already logged in, redirect based on status
+  // If user is already logged in, redirect
   useEffect(() => {
     if (user) {
-       if (user.type === 'student' && user.verificationStatus !== 'verified') {
-         navigate('/student-verification');
-       } else {
-         navigate('/dashboard');
-       }
+       navigate('/dashboard');
     }
   }, [user, navigate]);
 
@@ -86,44 +83,23 @@ export const Signup: React.FC = () => {
 
           <form className="space-y-6" onSubmit={handleSubmit}>
              <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700">Full Name</label>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-900">Full Name</label>
               <div className="mt-1">
                 <input id="name" name="name" type="text" required value={name} onChange={e => setName(e.target.value)} className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 bg-white text-gray-900 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm" />
               </div>
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email address</label>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-900">Email address</label>
               <div className="mt-1">
                 <input id="email" name="email" type="email" required value={email} onChange={e => setEmail(e.target.value)} className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 bg-white text-gray-900 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm" />
               </div>
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-900">Password</label>
               <div className="mt-1">
                 <input id="password" name="password" type="password" required value={password} onChange={e => setPassword(e.target.value)} className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 bg-white text-gray-900 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm" />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">I am a...</label>
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  type="button"
-                  onClick={() => setUserType('regular')}
-                  className={`py-3 px-4 border rounded-md text-sm font-medium flex flex-col items-center justify-center bg-white ${userType === 'regular' ? 'border-primary bg-green-50 text-primary' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-                >
-                  Regular User
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setUserType('student')}
-                  className={`py-3 px-4 border rounded-md text-sm font-medium flex flex-col items-center justify-center bg-white ${userType === 'student' ? 'border-primary bg-green-50 text-primary' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-                >
-                  Student
-                  <span className="text-xs text-green-600 font-normal">Get 20% OFF</span>
-                </button>
               </div>
             </div>
 

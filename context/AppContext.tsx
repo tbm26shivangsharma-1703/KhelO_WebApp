@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Booking, Venue, Facility, StudentVerificationData } from '../types';
 import { MOCK_VENUES, DEFAULT_VENUE_IMAGE } from '../constants';
@@ -17,6 +16,9 @@ interface AppContextType {
   cancelBooking: (bookingId: string, reason: string, refundAmount: number) => Promise<void>;
   currentBookingDraft: { venue: Venue; facilityId: string; date: Date; slots: string[] } | null;
   setBookingDraft: (draft: any) => void;
+  getUnavailableSlots: (venueId: string, facilityId: string, date: Date) => Promise<string[]>;
+  resetPassword: (email: string) => Promise<{ error?: string; message?: string }>;
+  updatePassword: (password: string) => Promise<{ error?: string; success?: boolean }>;
   isLoading: boolean;
 }
 
@@ -83,7 +85,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log(`Supabase Auth Event: ${event}`);
       
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION' || event === 'PASSWORD_RECOVERY') {
         if (session?.user) {
            try {
              // Fetch Bookings
@@ -206,6 +208,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const getUnavailableSlots = async (venueId: string, facilityId: string, date: Date): Promise<string[]> => {
+    const dateStr = date.toISOString().split('T')[0];
+    try {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('selected_slots')
+        .eq('venue_id', venueId)
+        .eq('facility_id', facilityId)
+        .eq('booking_date', dateStr)
+        .neq('status', 'cancelled');
+
+      if (error) {
+        console.error("Error fetching unavailable slots:", error);
+        return [];
+      }
+      
+      const allSlots = data.flatMap((b: any) => {
+        return typeof b.selected_slots === 'string' ? JSON.parse(b.selected_slots) : b.selected_slots;
+      });
+      
+      return [...new Set(allSlots)] as string[];
+    } catch (e) {
+      console.error("Error getting slots:", e);
+      return [];
+    }
+  };
+
   const login = async (email: string) => {
     // Placeholder - Logic handled by Login.tsx directly using Supabase client
   };
@@ -250,6 +279,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       }
       return {};
+    } catch (e: any) {
+      return { error: e.message };
+    }
+  };
+
+  const resetPassword = async (email: string) => {
+    try {
+      // Redirect to dashboard where user can find "Change Password" in Profile tab
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + (window.location.hash ? '/#/' : '/') + 'dashboard',
+      });
+      if (error) return { error: error.message };
+      return { message: 'Password reset link sent to your email.' };
+    } catch (e: any) {
+      return { error: e.message };
+    }
+  };
+
+  const updatePassword = async (password: string) => {
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) return { error: error.message };
+      return { success: true };
     } catch (e: any) {
       return { error: e.message };
     }
@@ -388,6 +440,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       cancelBooking,
       currentBookingDraft,
       setBookingDraft,
+      getUnavailableSlots,
+      resetPassword,
+      updatePassword,
       isLoading
     }}>
       {children}

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Shield, Target, Users } from 'lucide-react';
 
@@ -35,8 +36,8 @@ export const About: React.FC = () => {
              <div className="w-12 h-12 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-4">
                <Users size={24} />
              </div>
-             <h3 className="text-xl font-bold text-gray-900 mb-2">Student Focus</h3>
-             <p className="text-gray-600">We specially cater to students with exclusive discounts and verification systems, making fitness affordable.</p>
+             <h3 className="text-xl font-bold text-gray-900 mb-2">Community</h3>
+             <p className="text-gray-600">We are building a vibrant community of sports lovers, connecting players with venues and each other.</p>
           </div>
           <div className="text-center p-6 bg-gray-50 rounded-xl">
              <div className="w-12 h-12 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-4">
