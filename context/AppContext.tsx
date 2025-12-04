@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Booking, Venue, Facility, StudentVerificationData } from '../types';
 import { MOCK_VENUES, DEFAULT_VENUE_IMAGE } from '../constants';
@@ -184,7 +185,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const { data, error } = await supabase
         .from('bookings')
         .select('*')
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
       
       if (data && !error) {
          const mappedBookings: Booking[] = data.map((b: any) => ({
@@ -259,9 +261,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // OR user is created but session is null (email confirmation on)
       if (authData.user) {
         
-        // Try to insert profile immediately if we have the ID. 
-        // This might fail if RLS requires an active session and email confirm is ON.
-        // onAuthStateChange will handle it if this fails or is skipped.
         const { error: profileError } = await supabase.from('profiles').insert({
           id: authData.user.id,
           email: email,
@@ -271,7 +270,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
 
         if (profileError) {
-           console.log("Initial profile sync failed (likely waiting for verification):", profileError.message);
+           console.log("Initial profile sync failed:", profileError.message);
         }
 
         if (!authData.session) {
@@ -335,7 +334,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const { error: uploadError } = await supabase.storage.from('student-ids').upload(path, data.idCardFront);
         if (uploadError) {
            console.warn("Upload failed (bucket might not exist):", uploadError);
-           // Fallback for demo if bucket doesn't exist
            frontUrl = "https://placehold.co/400x300?text=ID+Front";
         } else {
            const { data: publicUrl } = supabase.storage.from('student-ids').getPublicUrl(path);
@@ -378,10 +376,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addBooking = async (booking: Booking) => {
+    // Optimistic Update
     setBookings([booking, ...bookings]);
+    
     if (user) {
       try {
-        const { error } = await supabase.from('bookings').insert({
+        const { data, error } = await supabase.from('bookings').insert({
            user_id: user.id,
            venue_id: booking.venueId,
            facility_id: booking.facilityId,
@@ -391,8 +391,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
            status: booking.status,
            payment_method: booking.paymentMethod,
            created_at: new Date().toISOString()
-        });
-        if (error) console.error("Booking sync failed:", error);
+        }).select().single();
+
+        if (error) {
+           console.error("Booking sync failed:", error);
+        } else if (data) {
+           // IMPORTANT: Update the local booking with the REAL ID from DB
+           // This prevents issues where we try to cancel a booking using the temp ID 'bk_...'
+           setBookings(prev => prev.map(b => b.id === booking.id ? { ...b, id: data.id } : b));
+        }
       } catch (e) {
         console.error("Booking sync failed:", e);
       }
@@ -417,11 +424,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           
         if (error) {
            console.error("Cancellation failed:", error);
-           // Revert if failed
+           alert(`Cancellation failed: ${error.message}`);
+           // Revert if failed (fetch source of truth)
            fetchUserBookings(user.id);
         }
       } catch (e) {
         console.error("Cancellation error:", e);
+        alert("An error occurred during cancellation.");
       }
     }
   };
